@@ -25,7 +25,6 @@ public:
 
     int socketfd;
     int socketid;
-    string name;
 
     static string binDataToString(BinData input);
 

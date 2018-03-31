@@ -15,19 +15,18 @@
 #include <thread>
 
 #include "../socket/TcpChatSocket.h"
-#include <json11.hpp>
 #include "../common.h"
 
-#define BUFSIZE 100
+#define BUFSIZE 4*1024*1024
 
 using namespace std;
-using namespace json11;
 
 class Client{
 private:
     TcpChatSocket* serverSock;
     TcpChatSocket* serverFileSock;
     TcpChatSocket* connectServer(int port);
+    /*
     void tryRegister();
     void tryLogin();
     void tryChat();
@@ -46,6 +45,7 @@ private:
     BinData inData;
     string chatPartner;
     FILE* currentFile;
+    */
 
 public:
     int startClient();
