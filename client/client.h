@@ -18,34 +18,24 @@
 #include "../common.h"
 
 #define BUFSIZE 4*1024*1024
+#define CMDBUFSIZE 100
 
 using namespace std;
 
 class Client{
 private:
     TcpChatSocket* serverSock;
-    TcpChatSocket* serverFileSock;
     TcpChatSocket* connectServer(int port);
-    /*
-    void tryRegister();
-    void tryLogin();
-    void tryChat();
-    void tryExitChat();
-    void tryListUsers();
-    void tryListFriends();
-    void tryAddFriend();
-    void tryProfile();
-    void sendMsg();
-    void trySendFile();
-    void tryRecvFile();
-    char buf[BUFSIZE];
-    char fileBuf[FILEBUFSIZE+1];
-    map<string,vector<string>> msgBuffer;
-    map<string,vector<string>> fileBuffer;
+    TcpChatSocket* connectFileServer(int port);
+
+    int currentPort;
+    int filePort;
+    char cmdBuf[CMDBUFSIZE];
+    char fileBuf[FILEBUFSIZE];
     BinData inData;
-    string chatPartner;
     FILE* currentFile;
-    */
+
+    void sendFile(string fileName);
 
 public:
     int startClient();

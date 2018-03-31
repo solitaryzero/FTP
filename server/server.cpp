@@ -2,16 +2,7 @@
 
 #define BUFSIZE 100
 #define MAX_USERS 10
-
-int Server::sendMessageTo(TcpChatSocket* sock, string content){
-
-    return 0;
-}
-
-int Server::sendFileTo(TcpChatSocket* sock, string content){
-
-    return 0;
-}
+#define baseFilePath "./fileStorage/" 
 
 //生成服务器对应的socket
 TcpChatSocket* Server::genServerSocket(int port){
@@ -56,7 +47,7 @@ TcpChatSocket* Server::waitForSocket(){
     TcpChatSocket* clientSock = new TcpChatSocket(clientSocketfd,nextSocketid);
     nextSocketid++;
     clientSock->initSocket();
-    printf("accept client %s\n",inet_ntoa(clientSockAddr.sin_addr));  
+    printf("accept file client %s @port %d\n",inet_ntoa(clientSockAddr.sin_addr),ntohs(clientSockAddr.sin_port));  
 
     return clientSock;
 }
@@ -74,9 +65,46 @@ TcpChatSocket* Server::waitForFileSocket(){
     TcpChatSocket* clientSock = new TcpChatSocket(clientSocketfd,nextFileSocketid);
     nextFileSocketid++;
     clientSock->initSocket();
-    printf("accept file client %s\n",inet_ntoa(clientSockAddr.sin_addr));  
+    printf("accept file client %s @port %d\n",inet_ntoa(clientSockAddr.sin_addr),ntohs(clientSockAddr.sin_port));  
+
+    MyAddr addr(clientSockAddr);
+    fileSocketMap[addr] = clientSock;
 
     return clientSock;
+}
+
+int Server::recvFileFrom(TcpChatSocket* sock, string filePath){
+    struct sockaddr_in s_in;
+    unsigned int len = sizeof(s_in);
+    if (getpeername(sock->socketfd, (struct sockaddr *)&s_in, &len) < 0){
+        perror("sockname error");  
+    }
+    s_in.sin_port = htons(ntohs(s_in.sin_port)+1);
+
+    if (fileSocketMap.find(s_in) == fileSocketMap.end()){
+        perror("file socket not found");
+        sock->sendMsg("410");
+        return 1;
+    } 
+
+    TcpChatSocket* fileSocket = fileSocketMap[s_in];
+    FILE* currentFile = fopen(filePath.c_str(),"wb");
+    BinData inData;
+    while (true){
+        inData = fileSocket->recvMsg();
+        if (inData.size() == 0) break;
+        fwrite(inData.data(),1,inData.size(),currentFile);
+    }
+
+    fflush(currentFile);
+    fclose(currentFile);
+    fileSocketMap.erase(s_in);
+
+    return 0;
+}
+
+int Server::sendFileTo(TcpChatSocket* sock, string filePath){
+    return 0;
 }
 
 void Server::catchClientSocket(TcpChatSocket* clientSock){
@@ -92,15 +120,22 @@ void Server::catchClientSocket(TcpChatSocket* clientSock){
                 continue;
             }
             tmp = msg.substr(0,4);
+            
             if (tmp == "RETR"){
-                tmp = msg.substr(4);
-                cout << "R " << tmp << endl;
+                tasks.push([=](){
+                    string filePath = baseFilePath+msg.substr(4);
+                    sendFileTo(clientSock,filePath);
+                });
             } else if (tmp == "STOR"){
-                tmp = msg.substr(4);
-                cout << "S " << tmp << endl;
+                tasks.push([=](){
+                    string filePath = baseFilePath+msg.substr(4);
+                    recvFileFrom(clientSock,filePath);
+                });
             }
+            
         }
         printf("disconnected\n");
+        //threadMap.erase(clientSock->socketid);
     });
 }
 
@@ -113,6 +148,7 @@ int Server::startServer(){
 
     threadMap.clear();
     fileThreadMap.clear();
+    fileSocketMap.clear();
 
     nextSocketid = 0;
     nextFileSocketid = 0;
@@ -141,8 +177,18 @@ int Server::startServer(){
             }
         }
     });
+
+    
+    thread waitForFileSocketThread = thread([=](){          //文件传输连接处理线程
+        while(true){
+            TcpChatSocket* clientSock;
+            clientSock = waitForFileSocket();
+        }
+    });
+    
     
     waitForSocketThread.join();
+    waitForFileSocketThread.join();
 
     serverSock->shutDownSocket();
     fileSock->shutDownSocket();

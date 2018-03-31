@@ -30,7 +30,7 @@ int TcpChatSocket::sendMsg(string s){
     dataOut.resize(s.size());
     char* pDst = &dataOut[0];
     memcpy(pDst,s.data(),s.size());
-    if (write(socketfd,dataOut.data(),dataOut.size()) < 0){
+    if (send(socketfd,dataOut.data(),dataOut.size(),0) < 0){
         perror("send error");
         return 1;
     }
@@ -42,7 +42,7 @@ int TcpChatSocket::sendMsg(void* p, int len){
     dataOut.resize(len);
     char* pDst = &dataOut[0];
     memcpy(pDst,p,len);
-    if (write(socketfd,dataOut.data(),dataOut.size()) < 0){
+    if (send(socketfd,dataOut.data(),dataOut.size(),0) < 0){
         perror("send error");
         return 1;
     }
@@ -50,7 +50,7 @@ int TcpChatSocket::sendMsg(void* p, int len){
 }
 
 int TcpChatSocket::sendMsg(BinData dataOut){
-    if (write(socketfd,dataOut.data(),dataOut.size()) < 0){
+    if (send(socketfd,dataOut.data(),dataOut.size(),0) < 0){
         perror("send error");
         return 1;
     }

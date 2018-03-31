@@ -21,6 +21,30 @@
 
 using namespace std;
 
+class MyAddr{
+public:
+    struct sockaddr_in addr;    
+    MyAddr(struct sockaddr_in ad){
+        this->addr = ad;
+    }
+
+    bool operator<(const MyAddr &a2) const{
+    if (this->addr.sin_addr.s_addr < a2.addr.sin_addr.s_addr) return true;
+    if (this->addr.sin_addr.s_addr > a2.addr.sin_addr.s_addr) return false;
+    if (this->addr.sin_port < a2.addr.sin_port) return true;
+    if (this->addr.sin_port > a2.addr.sin_port) return false;
+    return false;
+    }
+    
+    bool operator>(const MyAddr &a2) const{
+    if (this->addr.sin_addr.s_addr > a2.addr.sin_addr.s_addr) return true;
+    if (this->addr.sin_addr.s_addr < a2.addr.sin_addr.s_addr) return false;
+    if (this->addr.sin_port > a2.addr.sin_port) return true;
+    if (this->addr.sin_port < a2.addr.sin_port) return false;
+    return false;
+}
+};
+
 class Server{
 private:
     TcpChatSocket* serverSock;
@@ -28,17 +52,18 @@ private:
     queue<function<void()>> tasks;
     map<int,thread> threadMap;
     map<int,thread> fileThreadMap;
+    map<MyAddr,TcpChatSocket*> fileSocketMap;
     mutex taskLock;
     int nextSocketid;
     int nextFileSocketid;
 
-    int sendMessageTo(TcpChatSocket* sock, string content);
-    int sendFileTo(TcpChatSocket* sock, string content);
+    int recvFileFrom(TcpChatSocket* sock, string filePath);
+    int sendFileTo(TcpChatSocket* sock, string filePath);
     TcpChatSocket* genServerSocket(int port);
     TcpChatSocket* waitForSocket();
     TcpChatSocket* waitForFileSocket();
     void catchClientSocket(TcpChatSocket* clientSock);
-    void catchClientFileSocket(TcpChatSocket* clientSock);
+    //void catchClientFileSocket(TcpChatSocket* clientSock);
 
 public:
     int startServer();
