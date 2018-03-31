@@ -1,4 +1,5 @@
 #include "client.h"
+#define baseFilePath "./receivedFiles/" 
 
 TcpChatSocket* Client::connectServer(int port){
     int socketfd;
@@ -94,30 +95,55 @@ void Client::sendFile(string fileName){
     TcpChatSocket* fileSocket = connectFileServer(FILE_SERVER_PORT);
     if (fileSocket == nullptr) return;
 
+    this->serverSock->sendMsg("STOR "+fileName);
     int seg;
-    string binString;
     while ((seg = fread(fileBuf,1,FILEBUFSIZE,currentFile)) > 0){
-        binString.assign(fileBuf,seg);
-        fileSocket->sendMsg(binString);
+        fileSocket->sendMsg(fileBuf,seg);
     }
+    fileSocket->shutDownSocket();
+    delete(fileSocket);
+}
+
+void Client::recvFile(string fileName){ 
+    string fullFileName = baseFilePath+fileName;
+    currentFile = fopen(fullFileName.c_str(),"wb");
+    TcpChatSocket* fileSocket = connectFileServer(FILE_SERVER_PORT);
+    if (fileSocket == nullptr) return;
+
+    this->serverSock->sendMsg("RETR "+fileName);
+    while (true){
+        inData = fileSocket->recvMsg();
+        if (inData.size() == 0) break;
+        fwrite(inData.data(),1,inData.size(),currentFile);
+    }
+    fflush(currentFile);
+    fclose(currentFile);
+    fileSocket->shutDownSocket();
+    delete(fileSocket);
 }
 
 int Client::startClient(){
     this->serverSock = connectServer(SERVER_PORT);
     string cmd,tmp;
+
+    thread recvThread = thread([=](){
+
+    });
+
     while (true){
         cin.getline(cmdBuf,CMDBUFSIZE);
         cmd.assign(cmdBuf);
         if (cmd.length() > 4){
             tmp = cmd.substr(0,4);
             if (tmp == "RETR"){
-
+                recvFile(cmd.substr(5));
             } else if (tmp == "STOR"){
                 sendFile(cmd.substr(5));
             }
         }
-        this->serverSock->sendMsg(cmd);
     }
+
+    recvThread.join();
     serverSock->shutDownSocket();
     delete serverSock;
 

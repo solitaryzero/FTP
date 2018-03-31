@@ -35,7 +35,7 @@ public:
     if (this->addr.sin_port > a2.addr.sin_port) return false;
     return false;
     }
-    
+
     bool operator>(const MyAddr &a2) const{
     if (this->addr.sin_addr.s_addr > a2.addr.sin_addr.s_addr) return true;
     if (this->addr.sin_addr.s_addr < a2.addr.sin_addr.s_addr) return false;
@@ -63,7 +63,6 @@ private:
     TcpChatSocket* waitForSocket();
     TcpChatSocket* waitForFileSocket();
     void catchClientSocket(TcpChatSocket* clientSock);
-    //void catchClientFileSocket(TcpChatSocket* clientSock);
 
 public:
     int startServer();

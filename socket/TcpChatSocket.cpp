@@ -1,7 +1,5 @@
 #include "TcpChatSocket.h"
 
-#define BUFSIZE 4*1024*1024
-
 using namespace std;
 
 string TcpChatSocket::binDataToString(BinData input){
@@ -20,8 +18,8 @@ TcpChatSocket::TcpChatSocket(int sfd, int sid){
 }
 
 int TcpChatSocket::initSocket(){
-    int flag = 1;
-    setsockopt(socketfd,SOL_SOCKET ,SO_REUSEADDR,&flag,sizeof(flag)); 
+    int reuseFlag = 1;
+    setsockopt(socketfd,SOL_SOCKET,SO_REUSEADDR,&reuseFlag,sizeof(reuseFlag)); 
     return 0;
 }
 
@@ -59,9 +57,8 @@ int TcpChatSocket::sendMsg(BinData dataOut){
 
 BinData TcpChatSocket::recvMsg(){
     BinData res;
-
-    char buf[BUFSIZE];
-    int dataLength = recv(socketfd,buf,BUFSIZE,0);
+    char buf[FILEBUFSIZE];
+    int dataLength = recv(socketfd,buf,FILEBUFSIZE,0);
     if (dataLength <= 0){
         res.resize(0);
         return res;

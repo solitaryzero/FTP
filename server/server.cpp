@@ -1,6 +1,5 @@
 #include "server.h"
 
-#define BUFSIZE 100
 #define MAX_USERS 10
 #define baseFilePath "./fileStorage/" 
 
@@ -47,7 +46,7 @@ TcpChatSocket* Server::waitForSocket(){
     TcpChatSocket* clientSock = new TcpChatSocket(clientSocketfd,nextSocketid);
     nextSocketid++;
     clientSock->initSocket();
-    printf("accept file client %s @port %d\n",inet_ntoa(clientSockAddr.sin_addr),ntohs(clientSockAddr.sin_port));  
+    printf("accept client %s @port %d\n",inet_ntoa(clientSockAddr.sin_addr),ntohs(clientSockAddr.sin_port));  
 
     return clientSock;
 }
@@ -104,6 +103,34 @@ int Server::recvFileFrom(TcpChatSocket* sock, string filePath){
 }
 
 int Server::sendFileTo(TcpChatSocket* sock, string filePath){
+    struct sockaddr_in s_in;
+    unsigned int len = sizeof(s_in);
+    if (getpeername(sock->socketfd, (struct sockaddr *)&s_in, &len) < 0){
+        perror("sockname error");  
+    }
+    s_in.sin_port = htons(ntohs(s_in.sin_port)+1);
+
+    if (fileSocketMap.find(s_in) == fileSocketMap.end()){
+        perror("file socket not found");
+        sock->sendMsg("410");
+        return 1;
+    } 
+
+    TcpChatSocket* fileSocket = fileSocketMap[s_in];
+    FILE* currentFile = fopen(filePath.c_str(),"rb");
+    if (currentFile == NULL){
+        perror("invalid filename!");
+        return 1;
+    }
+
+    int seg;
+    char fileBuf[FILEBUFSIZE];
+    while ((seg = fread(fileBuf,1,FILEBUFSIZE,currentFile)) > 0){
+        cout << fileBuf << endl;
+        cout << "===============" << endl;
+        fileSocket->sendMsg(fileBuf,seg);
+    }
+    fileSocket->shutDownSocket();
     return 0;
 }
 
@@ -123,12 +150,12 @@ void Server::catchClientSocket(TcpChatSocket* clientSock){
             
             if (tmp == "RETR"){
                 tasks.push([=](){
-                    string filePath = baseFilePath+msg.substr(4);
+                    string filePath = baseFilePath+msg.substr(5);
                     sendFileTo(clientSock,filePath);
                 });
             } else if (tmp == "STOR"){
                 tasks.push([=](){
-                    string filePath = baseFilePath+msg.substr(4);
+                    string filePath = baseFilePath+msg.substr(5);
                     recvFileFrom(clientSock,filePath);
                 });
             }

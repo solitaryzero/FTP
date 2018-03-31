@@ -17,7 +17,6 @@
 #include "../socket/TcpChatSocket.h"
 #include "../common.h"
 
-#define BUFSIZE 4*1024*1024
 #define CMDBUFSIZE 100
 
 using namespace std;
@@ -36,6 +35,7 @@ private:
     FILE* currentFile;
 
     void sendFile(string fileName);
+    void recvFile(string fileName);
 
 public:
     int startClient();
