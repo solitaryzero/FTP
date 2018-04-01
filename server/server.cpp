@@ -79,6 +79,7 @@ int Server::recvFileFrom(TcpChatSocket* sock, string filePath){
 
     fileThreadMap[fileSocket->socketfd] = thread([=]{
         TcpChatSocket* clientSock = waitForFileSocket(fileSocket);
+        taskLock.lock();
         tasks.push([=]{
             FILE* currentFile = fopen(filePath.c_str(),"wb");
             BinData inData;
@@ -95,6 +96,7 @@ int Server::recvFileFrom(TcpChatSocket* sock, string filePath){
             //fileThreadMap.erase(fileSocket->socketfd);
             sock->sendMsg(UPLOAD_COMPLETE);
         });
+        taskLock.unlock();
     });
 
     return 0;
@@ -118,6 +120,7 @@ int Server::sendFileTo(TcpChatSocket* sock, string filePath){
 
     fileThreadMap[fileSocket->socketfd] = thread([=]{
         TcpChatSocket* clientSock = waitForFileSocket(fileSocket);
+        taskLock.lock();
         tasks.push([=]{
             sock->sendMsg(CONNECTION_SUCCESS);
             int seg;
@@ -131,6 +134,7 @@ int Server::sendFileTo(TcpChatSocket* sock, string filePath){
 
             sock->sendMsg(DOWNLOAD_COMPLETE);
         });
+        taskLock.unlock();
     });
 
     return 0;
@@ -140,26 +144,110 @@ void Server::catchClientSocket(TcpChatSocket* clientSock){
     threadMap[clientSock->socketid] = thread([=](){
         BinData inData;
         string msg,tmp;
+        vector<string> filePaths;
+        filePaths.clear();
         while (true){
             inData = clientSock->recvMsg();
             if (inData.size() == 0) break;
             msg = TcpChatSocket::binDataToString(inData);
-            if (msg.length() < 4){
-                clientSock->sendMsg("400");
-                continue;
-            }
-            tmp = msg.substr(0,4);
-            
-            if (tmp == "RETR"){
+            if (msg.length() > 4){
+                tmp = msg.substr(0,4);
+                
+                if (tmp == "RETR"){
+                    taskLock.lock();
+                    tasks.push([=](){
+                        string currentFilePath = "";
+                        for (int i=0;i<filePaths.size();i++){
+                            currentFilePath += filePaths[i]+"/";
+                        }
+                        string filePath = baseFilePath+currentFilePath+msg.substr(5);
+                        sendFileTo(clientSock,filePath);
+                    });
+                    taskLock.unlock();
+                } else if (tmp == "STOR"){
+                    taskLock.lock();
+                    tasks.push([=](){
+                        string currentFilePath = "";
+                        for (int i=0;i<filePaths.size();i++){
+                            currentFilePath += filePaths[i]+"/";
+                        }
+                        string filePath = baseFilePath+currentFilePath+msg.substr(5);
+                        cout << filePath << endl;
+                        recvFileFrom(clientSock,filePath);
+                    });
+                    taskLock.unlock();
+                } else if (tmp == "CWD "){
+                    
+                    string newfilePath = msg.substr(4);
+                    if (newfilePath == ".."){
+                        filePaths.pop_back();
+                        clientSock->sendMsg(CWD_SUCCESS);
+                    } else {
+                        string currentFilePath = "";
+                        for (int i=0;i<filePaths.size();i++){
+                            currentFilePath += filePaths[i]+"/";
+                        }
+                        string filePath = baseFilePath+currentFilePath+newfilePath;
+                        if (opendir(filePath.c_str())) {
+                            filePaths.push_back(newfilePath);
+                            clientSock->sendMsg(CWD_SUCCESS);
+                        } else {
+                            clientSock->sendMsg(CWD_FAILED);
+                        }
+                    }                      
+                    
+                } else if ((msg.length() > 5) && (msg.substr(0,5) == "MKDIR")){
+                    taskLock.lock();
+                    tasks.push([=](){
+                        string currentFilePath;
+                        char absPath[100];
+                        getcwd(absPath,sizeof(absPath));
+                        currentFilePath.assign(absPath);
+                        currentFilePath += "/fileStorage/";
+                        for (int i=0;i<filePaths.size();i++){
+                            currentFilePath += filePaths[i]+"/";
+                        }
+                        string filePath = currentFilePath+msg.substr(6);
+                        mkdir(filePath.c_str(),0777);
+                    });
+                    taskLock.unlock();
+                }
+            } else if (msg == "LIST"){
+                taskLock.lock();
                 tasks.push([=](){
-                    string filePath = baseFilePath+msg.substr(5);
-                    sendFileTo(clientSock,filePath);
+                    string currentFilePath = baseFilePath;
+                    for (int i=0;i<filePaths.size();i++){
+                        currentFilePath += filePaths[i]+"/";
+                    }  
+                    cout << currentFilePath << endl; 
+                    string result = "File list:\n";
+                    DIR *dir;
+                    struct dirent *ptr;
+                    dir = opendir(currentFilePath.c_str());
+                    while ((ptr=readdir(dir)) != NULL){
+                        if (strcmp(ptr->d_name,".")==0 || strcmp(ptr->d_name,"..")==0) {
+                            continue;
+                        } else if(ptr->d_type == 4) {
+                            result += "/"+std::string(ptr->d_name)+"\n";
+                        } else {
+                            result += std::string(ptr->d_name)+"\n";
+                        }
+                    }     
+                    clientSock->sendMsg(result);
                 });
-            } else if (tmp == "STOR"){
+                taskLock.unlock();
+            } else if (msg == "PWD"){
+                taskLock.lock();
                 tasks.push([=](){
-                    string filePath = baseFilePath+msg.substr(5);
-                    recvFileFrom(clientSock,filePath);
+                    string currentFilePath = "./";
+                    for (int i=0;i<filePaths.size();i++){
+                        currentFilePath += filePaths[i]+"/";
+                    }
+                    clientSock->sendMsg("Current Path: "+currentFilePath);
                 });
+                taskLock.unlock();
+            } else {
+                clientSock->sendMsg(SYNTAX_ERROR);
             }
             
         }
@@ -184,17 +272,19 @@ int Server::startServer(){
 
     this->serverSock = genServerSocket(SERVER_PORT);   //生成服务器的socket
 
-    thread taskThread = thread([=](){       //事件处理队列线程
-        while(true){
-            if (!tasks.empty()){
+    for (int i=0;i<MAXTHREADPOOL;i++){                  //构造线程池
+        threadPool.push_back(thread([=](){
+            while(true){
                 taskLock.lock();
-                function<void()> func = tasks.front();
-                tasks.pop();
+                if (!tasks.empty()){
+                    function<void()> func = tasks.front();
+                    tasks.pop();
+                    func();
+                }
                 taskLock.unlock();
-                func();
             }
-        }
-    });
+        }));       
+    }
 
     thread waitForSocketThread = thread([=](){          //指令连接处理线程
         while(true){

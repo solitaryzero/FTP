@@ -5,11 +5,15 @@
 #define FILE_SERVER_PORT 8002
 #define FILEBUFSIZE 4*1024
 #define MAXPORT 30000
+#define MAXTHREADPOOL 10
 
 #define CONNECTION_ERROR "Error building connection!\n\0"
 #define CONNECTION_SUCCESS "File transfer started...\n\0"
 #define UPLOAD_COMPLETE "Upload Complete!\n\0"
 #define DOWNLOAD_COMPLETE "Download Complete!\n\0"
 #define FILE_NOT_FOUND "Requested file not found...\n\0"
+#define SYNTAX_ERROR "Unknown command.\n\0"
+#define CWD_SUCCESS "Directory changed successfully!\n\0"
+#define CWD_FAILED "Directory change failed!\n\0"
 
 #endif

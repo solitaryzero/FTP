@@ -46,6 +46,7 @@ void Client::sendFile(string fileName){
             }
             break;
         }
+        if (this->failed) return;
     }
 
     int seg;
@@ -72,6 +73,7 @@ void Client::recvFile(string fileName){
             }
             break;
         }
+        if (this->failed) return;
     }
 
     while (true){
@@ -89,6 +91,7 @@ void Client::recvFile(string fileName){
 int Client::startClient(){
     this->filePort = -1;
     this->serverSock = connectServer(SERVER_PORT);
+    this->failed = false;
 
     thread recvThread = thread([=](){
         BinData msgData;
@@ -98,6 +101,9 @@ int Client::startClient(){
             msg = TcpChatSocket::binDataToString(msgData);
             if ((msg.length() > 5) && (msg.substr(0,4) == "PORT")){
                 this->filePort = stoi(msg.substr(5));
+            } else if (msg == FILE_NOT_FOUND){
+                this->filePort = -1;
+                this->failed = true;
             } else {
                 cout << msgData.data() << endl;
             }
@@ -115,7 +121,11 @@ int Client::startClient(){
                     recvFile(cmd.substr(5));
                 } else if (tmp == "STOR"){
                     sendFile(cmd.substr(5));
+                } else {
+                    this->serverSock->sendMsg(cmd);
                 }
+            } else {
+                this->serverSock->sendMsg(cmd);
             }
         }
     });

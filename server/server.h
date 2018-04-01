@@ -5,9 +5,11 @@
 #include <stdlib.h>
 #include <time.h>
 #include <sys/types.h>  
+#include <sys/stat.h>  
 #include <sys/socket.h>  
 #include <netinet/in.h>  
 #include <arpa/inet.h>  
+#include <dirent.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <memory.h>
@@ -51,6 +53,7 @@ class Server{
 private:
     TcpChatSocket* serverSock;
     queue<function<void()>> tasks;
+    vector<thread> threadPool;
     map<int,thread> threadMap;
     map<int,thread> fileThreadMap;
     mutex taskLock;

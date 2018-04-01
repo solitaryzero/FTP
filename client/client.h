@@ -27,6 +27,7 @@ private:
     TcpChatSocket* connectServer(int port);
 
     int filePort;
+    bool failed;
     char cmdBuf[CMDBUFSIZE];
     char fileBuf[FILEBUFSIZE];
     BinData inData;
