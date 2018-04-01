@@ -2,6 +2,8 @@
 #define SERVER_H
 
 #include <iostream>
+#include <stdlib.h>
+#include <time.h>
 #include <sys/types.h>  
 #include <sys/socket.h>  
 #include <netinet/in.h>  
@@ -48,11 +50,9 @@ public:
 class Server{
 private:
     TcpChatSocket* serverSock;
-    TcpChatSocket* fileSock;
     queue<function<void()>> tasks;
     map<int,thread> threadMap;
     map<int,thread> fileThreadMap;
-    map<MyAddr,TcpChatSocket*> fileSocketMap;
     mutex taskLock;
     int nextSocketid;
     int nextFileSocketid;
@@ -61,7 +61,7 @@ private:
     int sendFileTo(TcpChatSocket* sock, string filePath);
     TcpChatSocket* genServerSocket(int port);
     TcpChatSocket* waitForSocket();
-    TcpChatSocket* waitForFileSocket();
+    TcpChatSocket* waitForFileSocket(TcpChatSocket* fileSocket);
     void catchClientSocket(TcpChatSocket* clientSock);
 
 public:

@@ -25,9 +25,7 @@ class Client{
 private:
     TcpChatSocket* serverSock;
     TcpChatSocket* connectServer(int port);
-    TcpChatSocket* connectFileServer(int port);
 
-    int currentPort;
     int filePort;
     char cmdBuf[CMDBUFSIZE];
     char fileBuf[FILEBUFSIZE];
