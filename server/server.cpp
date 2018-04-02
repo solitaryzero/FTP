@@ -143,7 +143,6 @@ int Server::recvFileFrom(TcpChatSocket* sock, string filePath){
 int Server::sendFileTo(TcpChatSocket* sock, string filePath){
     FILE* currentFile = fopen(filePath.c_str(),"rb");
     if (currentFile == NULL){
-        perror("invalid filename!");
         sock->sendMsg(FILE_NOT_FOUND);
         return 1;
     }

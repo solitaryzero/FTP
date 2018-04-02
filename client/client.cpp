@@ -46,7 +46,10 @@ void Client::sendFile(string fileName){
             }
             break;
         }
-        if (this->failed) return;
+        if (this->failed) {
+            this->failed = false;
+            return;
+        }
     }
 
     int seg;
@@ -59,8 +62,6 @@ void Client::sendFile(string fileName){
 }
 
 void Client::recvFile(string fileName){ 
-    string fullFileName = baseFilePath+fileName;
-    currentFile = fopen(fullFileName.c_str(),"wb");
     this->serverSock->sendMsg("RETR "+fileName+"\n");
 
     TcpChatSocket* fileSocket;
@@ -73,8 +74,14 @@ void Client::recvFile(string fileName){
             }
             break;
         }
-        if (this->failed) return;
+        if (this->failed) {
+            this->failed = false;
+            return;
+        }
     }
+
+    string fullFileName = baseFilePath+fileName;
+    currentFile = fopen(fullFileName.c_str(),"wb");
 
     while (true){
         inData = fileSocket->recvMsg();
@@ -101,9 +108,10 @@ int Client::startClient(){
             msg = TcpChatSocket::binDataToString(msgData);
             if ((msg.length() > 5) && (msg.substr(0,4) == "PORT")){
                 this->filePort = stoi(msg.substr(5));
-            } else if (msg == FILE_NOT_FOUND){
+            } else if (msg.substr(0,msg.length()-1) == FILE_NOT_FOUND){
                 this->filePort = -1;
                 this->failed = true;
+                cout << FILE_NOT_FOUND << endl;
             } else {
                 cout << msgData.data() << endl;
             }
