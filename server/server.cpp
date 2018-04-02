@@ -43,7 +43,7 @@ TcpChatSocket* Server::genServerSocket(int port, bool useTimeOut){
         return nullptr;
     }
 
-    if (listen(serverSocketfd,MAX_QUEUE) < 0){
+    if (listen(serverSocketfd,MAXUSER) < 0){
         perror("listen error");
         return nullptr;
     }
@@ -127,6 +127,8 @@ int Server::recvFileFrom(TcpChatSocket* sock, string filePath){
             garbageLock.lock();
             deadThreads.push(fileSocket->socketfd);
             garbageLock.unlock();
+            delete(fileSocket);
+            delete(clientSock);
         });
         taskLock.unlock();
     });
@@ -177,6 +179,8 @@ int Server::sendFileTo(TcpChatSocket* sock, string filePath){
             garbageLock.lock();
             deadThreads.push(fileSocket->socketfd);
             garbageLock.unlock();
+            delete(fileSocket);
+            delete(clientSock);
         });
         taskLock.unlock();
     });
@@ -360,6 +364,7 @@ void Server::catchClientSocket(TcpChatSocket* clientSock){
         garbageLock.lock();
         deadThreads.push(clientSock->socketfd);
         garbageLock.unlock();
+        delete(clientSock);
     });
 }
 
@@ -392,9 +397,11 @@ int Server::startServer(){
                 if (!tasks.empty()){
                     function<void()> func = tasks.front();
                     tasks.pop();
+                    taskLock.unlock();
                     func();
+                } else {
+                    taskLock.unlock();
                 }
-                taskLock.unlock();
             }
         }));       
     }

@@ -26,30 +26,6 @@
 
 using namespace std;
 
-class MyAddr{
-public:
-    struct sockaddr_in addr;    
-    MyAddr(struct sockaddr_in ad){
-        this->addr = ad;
-    }
-
-    bool operator<(const MyAddr &a2) const{
-    if (this->addr.sin_addr.s_addr < a2.addr.sin_addr.s_addr) return true;
-    if (this->addr.sin_addr.s_addr > a2.addr.sin_addr.s_addr) return false;
-    if (this->addr.sin_port < a2.addr.sin_port) return true;
-    if (this->addr.sin_port > a2.addr.sin_port) return false;
-    return false;
-    }
-
-    bool operator>(const MyAddr &a2) const{
-    if (this->addr.sin_addr.s_addr > a2.addr.sin_addr.s_addr) return true;
-    if (this->addr.sin_addr.s_addr < a2.addr.sin_addr.s_addr) return false;
-    if (this->addr.sin_port > a2.addr.sin_port) return true;
-    if (this->addr.sin_port < a2.addr.sin_port) return false;
-    return false;
-}
-};
-
 class Server{
 private:
     TcpChatSocket* serverSock;
