@@ -17,17 +17,30 @@ TcpChatSocket::TcpChatSocket(int sfd, int sid){
     socketid = sid;
 }
 
-int TcpChatSocket::initSocket(){
+int TcpChatSocket::initSocket(bool useTimeOut){
     int reuseFlag = 1;
     setsockopt(socketfd,SOL_SOCKET,SO_REUSEADDR,&reuseFlag,sizeof(reuseFlag)); 
+
+    struct linger lg;
+    lg.l_onoff = true;
+    lg.l_linger = 30;   //超时时间为30s
+    setsockopt(socketfd, SOL_SOCKET, SO_LINGER, &lg, sizeof(lg));
+
+    if (useTimeOut){
+        int timeOutLimit = 120;
+        setsockopt(socketfd, SOL_SOCKET, SO_RCVTIMEO, &timeOutLimit, sizeof(timeOutLimit));
+        setsockopt(socketfd, SOL_SOCKET, SO_SNDTIMEO, &timeOutLimit, sizeof(timeOutLimit));
+    }
+
     return 0;
 }
 
 int TcpChatSocket::sendMsg(string s){
     BinData dataOut;
-    dataOut.resize(s.size());
+    dataOut.resize(s.size()+1);
     char* pDst = &dataOut[0];
     memcpy(pDst,s.data(),s.size());
+    pDst[s.size()] = '\0';
     if (send(socketfd,dataOut.data(),dataOut.size(),0) < 0){
         perror("send error");
         return 1;

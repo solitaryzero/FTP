@@ -23,7 +23,7 @@ TcpChatSocket* Client::connectServer(int port){
     }  
 
     newSock = new TcpChatSocket(socketfd);
-    newSock->initSocket();
+    newSock->initSocket(false);
 
     return newSock;
 }
@@ -34,7 +34,7 @@ void Client::sendFile(string fileName){
         cout << "invalid filename!" << endl;
         return;
     }
-    this->serverSock->sendMsg("STOR "+fileName);
+    this->serverSock->sendMsg("STOR "+fileName+"\n");
 
     TcpChatSocket* fileSocket;
     while (true){
@@ -61,7 +61,7 @@ void Client::sendFile(string fileName){
 void Client::recvFile(string fileName){ 
     string fullFileName = baseFilePath+fileName;
     currentFile = fopen(fullFileName.c_str(),"wb");
-    this->serverSock->sendMsg("RETR "+fileName);
+    this->serverSock->sendMsg("RETR "+fileName+"\n");
 
     TcpChatSocket* fileSocket;
     while (true){
@@ -122,10 +122,10 @@ int Client::startClient(){
                 } else if (tmp == "STOR"){
                     sendFile(cmd.substr(5));
                 } else {
-                    this->serverSock->sendMsg(cmd);
+                    this->serverSock->sendMsg(cmd+"\n");
                 }
             } else {
-                this->serverSock->sendMsg(cmd);
+                this->serverSock->sendMsg(cmd+"\n");
             }
         }
     });

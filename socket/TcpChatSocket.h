@@ -28,7 +28,7 @@ public:
 
     static string binDataToString(BinData input);
 
-    int initSocket();
+    int initSocket(bool useTimeOut);
     int sendMsg(string s);
     int sendMsg(void* p, int len);
     int sendMsg(BinData dataOut);
